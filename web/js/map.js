@@ -167,9 +167,11 @@ function renderLegend(breaks, colors) {
   const lo = vals[0] ?? 0;
   const names = { jenks: 'Jenks', quantile: 'Cuantiles',
                   equal: 'Intervalos iguales', stddev: 'Desv. estándar' };
+  const titles = { tbn: 'TBN por 1,000 hab.',
+                   tfr: 'TFR (hijos por mujer)',
+                   nac: 'Nacimientos' };
   let rows = `<div class="lg-title">${
-    S.metric === 'nac' ? 'Nacimientos'
-                       : 'TBN por 1,000 hab.'} · ${names[S.klass]}</div>`;
+    titles[S.metric]} · ${names[S.klass]}</div>`;
   let prev = lo;
   colors.forEach((c, i) => {
     const hi = breaks[i];
@@ -187,8 +189,14 @@ function showTip(ev, cg) {
   const tip = document.getElementById('tip');
   const rec = record(cg);
   const v = valueOf(rec), pct = percentile(cg);
-  const metricName = S.metric === 'nac' ? 'Nacimientos'
-    : (S.smooth ? 'TBN suavizada ‰' : 'TBN ‰');
+  const metricName = { nac: 'Nacimientos',
+                       tfr: 'TFR (hijos/mujer)' }[S.metric]
+    || (S.smooth ? 'TBN suavizada ‰' : 'TBN ‰');
+  const reemplazo = S.metric === 'tfr' && v != null
+    ? (v < 2.1
+      ? '<div class="tip-warn">⚠ Bajo nivel de reemplazo (&lt; 2.1)</div>'
+      : '<div class="tip-pct">Sobre nivel de reemplazo (≥ 2.1)</div>')
+    : '';
   tip.innerHTML = `
     <h3>${nombreOf(rec, cg)}</h3>
     <div class="tip-cve">CVEGEO ${cg}</div>
@@ -197,6 +205,7 @@ function showTip(ev, cg) {
       <tr><td>Nacimientos</td><td>${fmtNum(nacOf(rec), 0)}</td></tr>
       <tr><td>Población base</td><td>${fmtNum(pobOf(rec), 0)}</td></tr>
     </table>
+    ${reemplazo}
     ${flagOf(rec) ? '<div class="tip-warn">⚠ Alta varianza: población ' +
       '&lt; 10,000 — considere la media trienal</div>' : ''}
     ${pct != null ? `<div class="tip-pct">Percentil ${pct} ${

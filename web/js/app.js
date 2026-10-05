@@ -54,7 +54,7 @@ function exportCSV() {
   const yr = valuesOfYear();
   const hdr = ['cvegeo', 'nombre', 'anio', 'cohorte',
                'nacimientos', 'poblacion', 'tbn', 'tbn_suavizada',
-               'metrica_valor', 'flag_baja_escala'];
+               'tfr', 'metrica_valor', 'flag_baja_escala'];
   const rows = [hdr.join(',')];
   for (const cg of Object.keys(yr).sort()) {
     const r = record(cg);
@@ -62,7 +62,7 @@ function exportCSV() {
     rows.push([
       cg, `"${nombreOf(r, cg)}"`, S.year, S.cohort,
       coh[0], pobOf(r), r.c.todas[1], r.c.todas[2],
-      valueOf(r), r.f,
+      r.tf ?? '', valueOf(r), r.f,
     ].join(','));
   }
   download(`natalidad_${S.scope}_${S.year}_${S.cohort}.csv`,
@@ -90,6 +90,7 @@ async function exportGeoJSON() {
       poblacion: r?.v[1] ?? null,
       tbn: r?.c.todas[1] ?? null,
       tbn_suavizada: r?.c.todas[2] ?? null,
+      tfr: r?.tf ?? null,
       metrica_valor: r ? valueOf(r) : null,
       flag_baja_escala: r?.f === 1,
     };

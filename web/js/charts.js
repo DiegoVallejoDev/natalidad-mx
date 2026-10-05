@@ -45,7 +45,16 @@ export function updateSeries() {
       },
       { name: refName(), type: 'line', data: ref, smooth: true,
         lineStyle: { color: PAL.b, width: 1.8, type: 'dashed' },
-        itemStyle: { color: PAL.b }, symbolSize: 4 },
+        itemStyle: { color: PAL.b }, symbolSize: 4,
+        ...(S.metric === 'tfr' ? { markLine: {
+          symbol: 'none', silent: true,
+          lineStyle: { color: '#ff6b6b', type: 'solid', width: 1.4,
+                       opacity: .8 },
+          label: { color: '#ff6b6b', fontSize: 9,
+                   formatter: 'reemplazo 2.1', position: 'insideEndTop' },
+          data: [{ yAxis: 2.1 }],
+        } } : {}),
+      },
     ].filter(Boolean),
   }, true);
 }
@@ -77,7 +86,8 @@ export function updateDist() {
       { type: 'category',
         data: bins.map(b => fmtNum(b.x, 1)), ...baseAxis(),
         axisLabel: { color: PAL.text, fontSize: 9, interval: 3 },
-        name: S.metric === 'nac' ? 'nac.' : '‰',
+        name: S.metric === 'nac' ? 'nac.'
+              : (S.metric === 'tfr' ? 'TFR' : '‰'),
         nameTextStyle: { color: PAL.text } },
       { type: 'value', min: lo, max: hi, show: false },
     ],
@@ -170,7 +180,7 @@ export function updateMeta() {
     <div class="mrow"><span>Serie</span><b>${m.anios[0]}–${m.anios[m.anios.length - 1]}</b></div>
     <div class="mrow"><span>Excluidos extranjero</span><b>${fmtNum(m.exclusiones.EXTRANJERO || 0, 0)}</b></div>
     <div class="mrow"><span>No especificado</span><b>${fmtNum(m.exclusiones.NO_ESPECIFICADO || 0, 0)}</b></div>
-    <div style="margin-top:6px">Cobertura SINAC ≈ 86–90% del registro civil (nacimientos en unidades de salud). Las claves de residencia corresponden a la madre. Click en Jalisco para drill-down municipal.</div>`;
+    <div style="margin-top:6px">Cobertura SINAC ≈ 86–90% del registro civil (nacimientos en unidades de salud). Las claves de residencia corresponden a la madre. Click en Jalisco para drill-down municipal.<br/>TFR = 5·Σ B<sub>g</sub>/W<sub>g</sub> (grupos quinquenales 15–49, denominadores CONAPO); el municipal aplica la estructura de edad estatal escalada por población femenina — aproximación.</div>`;
 }
 
 export function updateAll() {

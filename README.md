@@ -54,6 +54,11 @@ SINAC por ofrecer la serie 2010–2024 completa y consistente.
 - **CVEGEO zero-padded de 5 dígitos** — `cve_ent(2)+cve_mun(3)`; Jalisco 14 +
   municipio 46 → `14046` (TC-04).
 - **TBN** = nacimientos / población mitad de año × 1,000 (RF-01.3).
+- **TFR** (tasa global de fecundidad) = 5·Σ_g B_g/W_g sobre grupos quinquenales
+  de mujeres 15–49; umbral de reemplazo 2.1. Estatal/nacional usa
+  denominadores CONAPO reales por edad; el municipal **aproxima** W_g con la
+  estructura de edad estatal escalada por población femenina municipal
+  (CONAPO no publica edad a nivel municipal).
 - **Suavizada trienal** — media móvil centrada de 3 años por unidad (RF-03.2).
 - **Flag baja escala** — `poblacion < 10,000` (RF-03.1, TC-03).
 
@@ -75,7 +80,7 @@ cd web && python -m http.server 8340   # → http://localhost:8340
   intervalos iguales, desviación estándar** y rampa Viridis (daltónico-segura).
 - Tooltip: nombre + CVEGEO + métrica + nacimientos + población + percentil.
 - Filtros: año (2010–2024), cohorte de edad materna (incl. adolescentes <20),
-  métrica tasa/volumen, tasa suavizada trienal.
+  métrica tasa/TFR/volumen, tasa suavizada trienal.
 - Gráficas: serie temporal vs. promedio de referencia, histograma+KDE,
   dispersión TBN×población (log), ranking top/bottom-10.
 - Alerta visual (contorno punteado ámbar) en municipios P<10,000.
@@ -86,6 +91,6 @@ cd web && python -m http.server 8340   # → http://localhost:8340
 
 `cvegeo, cve_ent, cve_mun, nombre_geografico, anio_ocurrencia,
 nacimientos_totales, poblacion_mitad_anio, tasa_bruta_natalidad,
-tasa_suavizada_trienal, flag_baja_escala, cohorte` — PK lógica
+tasa_suavizada_trienal, tasa_fecundidad, flag_baja_escala, cohorte` — PK lógica
 `(cvegeo, anio_ocurrencia, cohorte)`; incluye agregados estatales
 (`cve_mun` null) y nacional (`cvegeo='00'`).
