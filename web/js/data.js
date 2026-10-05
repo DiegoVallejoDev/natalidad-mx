@@ -2,37 +2,51 @@
 export const S = {
   meta: null,
   ent: null,          // {years:{A:{cvegeo:{n,v,f,c}}}}
-  mun: null,          // idem municipios Jalisco
+  states: {},         // cve_ent → {years, geo} bajo demanda (drill-down)
   geoEnt: null,       // FeatureCollection estados
-  geoMun: null,       // FeatureCollection municipios Jalisco
-  scope: 'nacional',  // 'nacional' | 'jalisco'
+  scope: 'nacional',  // 'nacional' | cve_ent ('14'…)
   year: null,
   cohort: 'todas',
-  metric: 'tbn',      // 'tbn' | 'nac'
+  metric: 'tbn',      // 'tbn' | 'tfr' | 'nac'
   smooth: false,
   klass: 'jenks',
   selected: null,     // cvegeo seleccionado
 };
 
 export async function loadAll() {
-  const [meta, ent, mun, gEnt, gMun] = await Promise.all([
+  const [meta, ent, gEnt] = await Promise.all([
     fetch('data/catalogo.json').then(r => r.json()),
     fetch('data/tasas_ent.json').then(r => r.json()),
-    fetch('data/tasas_mun.json').then(r => r.json()),
     fetch('data/mx_estados.topojson').then(r => r.json()),
-    fetch('data/jalisco_mun.topojson').then(r => r.json()),
   ]);
   S.meta = meta;
   S.ent = ent.years;
-  S.mun = mun.years;
   S.geoEnt = topojson.feature(gEnt, gEnt.objects[Object.keys(gEnt.objects)[0]]);
-  S.geoMun = topojson.feature(gMun, gMun.objects[Object.keys(gMun.objects)[0]]);
   S.year = meta.anios[meta.anios.length - 1];
 }
 
-export const dataset = () => (S.scope === 'jalisco' ? S.mun : S.ent);
+// carga perezosa de la capa municipal de un estado (datos + geometría)
+export async function loadState(cve) {
+  if (S.states[cve]) return S.states[cve];
+  const [tasas, topo] = await Promise.all([
+    fetch(`data/tasas_mun_${cve}.json`).then(r => r.json()),
+    fetch(`data/mun_${cve}.topojson`).then(r => r.json()),
+  ]);
+  S.states[cve] = {
+    years: tasas.years,
+    geo: topojson.feature(topo,
+      topo.objects[Object.keys(topo.objects)[0]]),
+  };
+  return S.states[cve];
+}
+
+const isMun = () => S.scope !== 'nacional';
+export const dataset = () => (isMun() ? S.states[S.scope].years : S.ent);
 export const record = (cvegeo, year = S.year) => dataset()[year]?.[cvegeo];
-export const geojson = () => (S.scope === 'jalisco' ? S.geoMun : S.geoEnt);
+export const geojson = () => (isMun() ? S.states[S.scope].geo : S.geoEnt);
+export const scopeName = () => isMun()
+  ? (S.ent[S.year]?.[S.scope]?.n ?? `Estado ${S.scope}`) : 'México';
+export const unitKind = () => (isMun() ? 'municipios' : 'entidades');
 
 // valor de métrica vigente para una unidad
 export function valueOf(rec) {
@@ -49,7 +63,7 @@ export function nombreOf(rec, cg) { return rec?.n || cg; }
 
 // serie temporal de la unidad (métrica vigente)
 export function seriesOf(cvegeo, scope = S.scope) {
-  const ds = scope === 'jalisco' ? S.mun : S.ent;
+  const ds = scope !== 'nacional' ? S.states[scope].years : S.ent;
   return S.meta.anios.map(y => {
     const r = ds[y]?.[cvegeo];
     if (!r) return null;
@@ -58,16 +72,16 @@ export function seriesOf(cvegeo, scope = S.scope) {
     return S.metric === 'nac' ? c[0] : (S.smooth ? c[2] : c[1]);
   });
 }
-// promedio de referencia: estatal (14) para munis, nacional (00) para estados
+// promedio de referencia: estatal para munis, nacional (00) para estados
 export function refSeries() {
-  return S.scope === 'jalisco' ? seriesOf('14', 'nacional')
-                               : seriesOf('00', 'nacional');
+  return S.scope !== 'nacional' ? seriesOf(S.scope, 'nacional')
+                                : seriesOf('00', 'nacional');
 }
 export const refName = () =>
-  S.scope === 'jalisco' ? 'Promedio Jalisco' : 'Promedio nacional';
+  S.scope !== 'nacional' ? `Promedio ${scopeName()}` : 'Promedio nacional';
 
 export function valuesOfYear(scope = S.scope, year = S.year) {
-  const ds = scope === 'jalisco' ? S.mun : S.ent;
+  const ds = scope !== 'nacional' ? S.states[scope].years : S.ent;
   const yr = ds[year] || {};
   const out = {};
   for (const [cg, rec] of Object.entries(yr)) out[cg] = valueOf(rec);

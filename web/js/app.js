@@ -1,6 +1,6 @@
 // app.js — bootstrap, filtros globales, exportaciones
-import { S, loadAll, geojson, valuesOfYear, record, valueOf,
-         nacOf, pobOf, nombreOf } from './data.js';
+import { S, loadAll, loadState, geojson, valuesOfYear, record, valueOf,
+         pobOf, nombreOf, scopeName } from './data.js';
 import { initMap, refreshValues, switchScope, captureHiResPNG,
          getMap } from './map.js';
 import { updateAll, updateMeta, resizeAll, svgExports,
@@ -20,8 +20,9 @@ export function onSelect() {
   refreshBreadcrumb();
 }
 
-export function drillToJalisco() {
-  switchScope('jalisco');
+export async function drillTo(cve) {
+  await loadState(cve);
+  switchScope(cve);
   document.getElementById('btn-back').classList.remove('hidden');
   refreshBreadcrumb();
   updateAll();
@@ -38,8 +39,9 @@ function refreshBreadcrumb() {
   const sel = S.selected
     ? ` · ${nombreOf(record(S.selected), S.selected)} ${S.selected}` : '';
   document.getElementById('breadcrumb').textContent =
-    (S.scope === 'jalisco' ? 'Jalisco · 125 municipios'
-                          : 'México · 32 entidades federativas') + sel;
+    (S.scope !== 'nacional'
+      ? `${scopeName()} · ${geojson().features.length} municipios`
+      : 'México · 32 entidades federativas') + sel;
 }
 
 function refresh() {
@@ -76,11 +78,11 @@ async function exportParquet() {
 }
 
 async function exportGeoJSON() {
-  const gj = await fetch('data/jalisco_mun.geojson').then(r => r.json());
-  const yr = S.mun[S.year] || {};
+  // capa del scope activo ya en memoria — clona y enriquece atributos
+  const gj = JSON.parse(JSON.stringify(geojson()));
   for (const f of gj.features) {
     const cg = f.properties.cvegeo;
-    const r = yr[cg];
+    const r = record(cg);
     const coh = r?.c[S.cohort] || r?.c.todas || [null, null, null];
     f.properties = {
       ...f.properties,
@@ -95,7 +97,7 @@ async function exportGeoJSON() {
       flag_baja_escala: r?.f === 1,
     };
   }
-  download(`jalisco_mun_enriquecido_${S.year}.geojson`,
+  download(`natalidad_${S.scope}_enriquecido_${S.year}.geojson`,
            new Blob([JSON.stringify(gj)], { type: 'application/geo+json' }));
 }
 

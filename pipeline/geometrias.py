@@ -4,9 +4,9 @@ Entrada: sources/5129746/mx_tj.json — TopoJSON INEGI MGN con objetos
 'states' (32, state_code) y 'municipalities' (2436, state_code+mun_code).
 
 Salidas (web/data/):
-- mx_estados.topojson   props: cvegeo (2), nombre
-- jalisco_mun.topojson  props: cvegeo (5), nombre
-- jalisco_mun.geojson   capa enriquecida para RF-06.2
+- mx_estados.topojson      props: cvegeo (2), nombre
+- mun_<cve_ent>.topojson   municipios por estado, carga bajo drill-down
+- mun_<cve_ent>.geojson    capa enriquecible para RF-06.2
 """
 from __future__ import annotations
 
@@ -58,23 +58,24 @@ def shp(target: str, out: Path, simplify: str | None = None,
     (OUT / "_tmp2.topojson").unlink()
 
 
-def geojson_enriquecido() -> None:
-    """RF-06.2: GeoJSON municipal de Jalisco con atributos calculables."""
-    run(["npx", "-y", "mapshaper", str(OUT / "jalisco_mun.topojson"),
-         "-o", str(OUT / "jalisco_mun.geojson"), "format=geojson",
+def geojson_estado(cve: str) -> None:
+    """RF-06.2: GeoJSON municipal por estado con atributos calculables."""
+    run(["npx", "-y", "mapshaper", str(OUT / f"mun_{cve}.topojson"),
+         "-o", str(OUT / f"mun_{cve}.geojson"), "format=geojson",
          "precision=0.0001", "force"])
 
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     shp("states", OUT / "mx_estados.topojson", simplify="30%")
-    shp("municipalities", OUT / "jalisco_mun.topojson",
-        extra=["-filter", "state_code==14"])
-    geojson_enriquecido()
-    for f in ["mx_estados.topojson", "jalisco_mun.topojson",
-              "jalisco_mun.geojson"]:
-        p = OUT / f
-        print(f"{f}: {p.stat().st_size/1024:.0f} KB")
+    for cve in sorted(NOM_ENT):
+        shp("municipalities", OUT / f"mun_{cve}.topojson",
+            extra=["-filter", f"state_code=={int(cve)}"])
+        geojson_estado(cve)
+    for f in sorted(OUT.glob("mun_*.topojson")):
+        print(f"{f.name}: {f.stat().st_size/1024:.0f} KB")
+    print(f"mx_estados.topojson: "
+          f"{(OUT/'mx_estados.topojson').stat().st_size/1024:.0f} KB")
 
 
 if __name__ == "__main__":

@@ -1,8 +1,9 @@
 # Natalidad MX
 
 Plataforma web analítica y geoespacial para la **Tasa Bruta de Natalidad (TBN)**
-de México: 32 entidades federativas a nivel nacional y los **125 municipios de
-Jalisco** por drill-down, serie 2010–2024.
+de México: 32 entidades federativas a nivel nacional y **drill-down
+municipal para cualquiera de las 32 entidades** (2,436 municipios,
+carga perezosa por estado), serie 2010–2024.
 
 ## Arquitectura
 
@@ -36,7 +37,7 @@ Marco Geo (TopoJSON)────────────────► web/data
 |---|---|---|
 | Nacimientos | SINAC / DGIS Secretaría de Salud (`sinac_{año}.zip`) | 2010–2024, ~28.9M eventos |
 | Población | CONAPO proyecciones a mitad de año (municipio + entidad) | 2010–2030 |
-| Geometrías | Marco Geoestadístico (TopoJSON simplificado, cuantizado) | 32 entidades / 2,456 municipios |
+| Geometrías | Marco Geoestadístico (TopoJSON simplificado, cuantizado) | 32 entidades / 2,436 municipios (Mayo 2021) |
 | Catálogos | AGEEML (`gaia.inegi.org.mx/wscatgeo/v2`) + catálogos SaS | — |
 
 **Cobertura:** SINAC capta partos atendidos en unidades de salud
@@ -72,12 +73,19 @@ python -m pipeline.run --solo ingest   # una etapa
 
 # cliente
 cd web && python -m http.server 8340   # → http://localhost:8340
+
+# reporte PDF (requiere los payloads de web/data/)
+python pipeline/reporte.py
+google-chrome --headless=new --no-pdf-header-footer \
+  --print-to-pdf=docs/reporte_natalidad_mx.pdf \
+  docs/reporte_natalidad_mx.html
 ```
 
 ## Funcionalidad del cliente
 
-- Coropletas nacional/Jalisco con clasificación **Jenks, cuantiles,
-  intervalos iguales, desviación estándar** y rampa Viridis (daltónico-segura).
+- Coropletas nacional → municipal (cualquier estado, click para drill-down)
+  con clasificación **Jenks, cuantiles, intervalos iguales, desviación
+  estándar** y rampa Viridis (daltónico-segura).
 - Tooltip: nombre + CVEGEO + métrica + nacimientos + población + percentil.
 - Filtros: año (2010–2024), cohorte de edad materna (incl. adolescentes <20),
   métrica tasa/TFR/volumen, tasa suavizada trienal.
@@ -86,6 +94,12 @@ cd web && python -m http.server 8340   # → http://localhost:8340
 - Alerta visual (contorno punteado ámbar) en municipios P<10,000.
 - Exportación: `.csv`, `.parquet`, `.geojson` enriquecido, `.png` ~300 DPI,
   `.svg` vectorial por gráfica.
+
+## Reporte
+
+`docs/reporte_natalidad_mx.pdf` — resumen analítico imprimible (KPIs
+nacionales, serie 2010–2024, tabla de las 32 entidades, extremos
+municipales, metodología). Regenerar con `pipeline/reporte.py`.
 
 ## Esquema `tasas.parquet` (tasa_natalidad_territorial)
 

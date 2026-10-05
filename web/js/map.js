@@ -1,8 +1,8 @@
 // map.js — MapLibre: coropleta, tooltips, drill-down, indicador de varianza
 import { S, geojson, labelPoints, valuesOfYear, record, valueOf, nacOf, pobOf,
-         flagOf, nombreOf, percentile } from './data.js';
+         flagOf, nombreOf, percentile, scopeName } from './data.js';
 import { classify, stepExpr, fmtBreak, fmtNum } from './classify.js';
-import { onSelect, drillToJalisco } from './app.js';
+import { onSelect, drillTo } from './app.js';
 
 let map = null;
 let hoverCve = null;
@@ -61,7 +61,7 @@ function addScopeLayers(m) {
     id: LYR_OUT, type: 'line', source: SRC,
     paint: {
       'line-color': '#1b2436',
-      'line-width': S.scope === 'jalisco' ? 0.4 : 1.0,
+      'line-width': S.scope !== 'nacional' ? 0.4 : 1.0,
     },
   });
   // alta varianza (P<10k): contorno punteado ámbar — RF-03.1
@@ -86,7 +86,7 @@ function addScopeLayers(m) {
     id: LYR_LAB, type: 'symbol', source: SRC_LAB,
     layout: {
       'text-field': ['get', 'nombre'],
-      'text-size': S.scope === 'jalisco' ? 9 : 11,
+      'text-size': S.scope !== 'nacional' ? 9 : 11,
       'text-font': ['Open Sans Semibold'],
       'symbol-placement': 'point',
       'text-max-width': 8,
@@ -95,7 +95,7 @@ function addScopeLayers(m) {
       'text-color': '#dfe7f3',
       'text-halo-color': '#0d1117',
       'text-halo-width': 1.4,
-      'text-opacity': S.scope === 'jalisco'
+      'text-opacity': S.scope !== 'nacional'
         ? ['interpolate', ['linear'], ['zoom'], 6.4, 0, 7.2, 0.9] : 0.9,
     },
   });
@@ -118,7 +118,7 @@ function wireEvents(m) {
     const f = e.features?.[0];
     if (!f) return;
     const cg = f.properties.cvegeo;
-    if (S.scope === 'nacional' && cg === '14') { drillToJalisco(); return; }
+    if (S.scope === 'nacional' && cg !== '00') { drillTo(cg); return; }
     selectUnit(cg);
   });
 }
@@ -146,7 +146,7 @@ export function refreshValues(m = map) {
     const rec = record(cg);
     m.setFeatureState({ source: SRC, id: cg }, {
       v: valueOf(rec),
-      flag: flagOf(rec) && S.scope === 'jalisco',
+      flag: flagOf(rec) && S.scope !== 'nacional',
       sel: cg === S.selected,
     });
   }
@@ -154,7 +154,7 @@ export function refreshValues(m = map) {
     renderLegend(breaks, colors);
     hideTip();
     document.getElementById('varnote').classList.toggle('hidden',
-      !(S.scope === 'jalisco' &&
+      !(S.scope !== 'nacional' &&
         geojson().features.some(f => flagOf(record(f.properties.cvegeo)))));
   }
 }
@@ -209,7 +209,7 @@ function showTip(ev, cg) {
     ${flagOf(rec) ? '<div class="tip-warn">⚠ Alta varianza: población ' +
       '&lt; 10,000 — considere la media trienal</div>' : ''}
     ${pct != null ? `<div class="tip-pct">Percentil ${pct} ${
-      S.scope === 'jalisco' ? 'de Jalisco' : 'nacional'}</div>` : ''}`;
+      S.scope !== 'nacional' ? `de ${scopeName()}` : 'nacional'}</div>` : ''}`;
   tip.classList.remove('hidden');
   const pane = document.querySelector('.map-pane');
   const r = pane.getBoundingClientRect();
@@ -221,6 +221,19 @@ function showTip(ev, cg) {
   tip.style.top = y + 'px';
 }
 function hideTip() { document.getElementById('tip').classList.add('hidden'); }
+
+// bbox propio del FeatureCollection activo (sin dependencia externa)
+function boundsOf(fc) {
+  let x0 = 180, y0 = 90, x1 = -180, y1 = -90;
+  const walk = a => {
+    if (typeof a[0] === 'number') {
+      x0 = Math.min(x0, a[0]); y0 = Math.min(y0, a[1]);
+      x1 = Math.max(x1, a[0]); y1 = Math.max(y1, a[1]);
+    } else a.forEach(walk);
+  };
+  for (const f of fc.features) walk(f.geometry.coordinates);
+  return [[x0, y0], [x1, y1]];
+}
 
 export function switchScope(scope) {
   S.scope = scope;
@@ -234,8 +247,8 @@ export function switchScope(scope) {
     }
   };
   map.on('sourcedata', onData);
-  if (scope === 'jalisco') {
-    map.fitBounds([[-104.75, 18.85], [-101.2, 21.9]], { padding: 30 });
+  if (scope !== 'nacional') {
+    map.fitBounds(boundsOf(geojson()), { padding: 30 });
   } else {
     map.fitBounds([[-118.5, 14.3], [-86.5, 32.9]], { padding: 20 });
   }

@@ -203,10 +203,12 @@ def main() -> None:
     tabla.write_parquet(OUT / "tasas.parquet")
     tabla.write_csv(OUT / "tasas.csv")
 
-    jalisco_only = mun.filter(pl.col("cvegeo").str.starts_with("14"))
-    (OUT / "tasas_mun.json").write_text(json.dumps(
-        {"years": to_records(jalisco_only, "cvegeo")}, ensure_ascii=False,
-        separators=(",", ":")))
+    # un payload municipal por estado — carga bajo demanda en drill-down
+    for cve in sorted(nom_ent):
+        sub = mun.filter(pl.col("cvegeo").str.starts_with(cve))
+        (OUT / f"tasas_mun_{cve}.json").write_text(json.dumps(
+            {"years": to_records(sub, "cvegeo")}, ensure_ascii=False,
+            separators=(",", ":")))
     (OUT / "tasas_ent.json").write_text(json.dumps(
         {"years": to_records(ent, "cvegeo")}, ensure_ascii=False,
         separators=(",", ":")))

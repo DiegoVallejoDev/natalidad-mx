@@ -1,6 +1,7 @@
 // charts.js — ECharts: serie temporal, histograma+KDE, dispersión, ranking
 import { S, seriesOf, refSeries, refName, valuesOfYear, record,
-         nombreOf, flagOf, valueOf } from './data.js';
+         nombreOf, flagOf, valueOf, dataset, scopeName,
+         unitKind } from './data.js';
 import { fmtNum } from './classify.js';
 
 const PAL = { a: '#58a6ff', b: '#f0b429', c: '#3fb950',
@@ -59,10 +60,14 @@ export function updateSeries() {
   }, true);
 }
 
-// RF-04.2a — histograma + KDE de la TBN municipal de Jalisco
+// RF-04.2a — histograma + KDE de la distribución del scope activo
 export function updateDist() {
   const c = mk('ch-dist');
-  const vals = Object.values(valuesOfYear('jalisco'))
+  document.getElementById('dist-h2').textContent =
+    `Distribución ${unitKind() === 'municipios' ? 'municipal' : 'estatal'}`;
+  document.getElementById('dist-tag').textContent =
+    `histograma + KDE · ${scopeName()}`;
+  const vals = Object.values(valuesOfYear())
     .filter(v => v != null);
   const lo = Math.min(...vals), hi = Math.max(...vals);
   const nb = 18, w = (hi - lo) / nb || 1;
@@ -84,7 +89,8 @@ export function updateDist() {
     tooltip: { trigger: 'axis' },
     xAxis: [
       { type: 'category',
-        data: bins.map(b => fmtNum(b.x, 1)), ...baseAxis(),
+        data: bins.map(b => fmtNum(b.x, S.metric === 'tfr' ? 2 : 1)),
+        ...baseAxis(),
         axisLabel: { color: PAL.text, fontSize: 9, interval: 3 },
         name: S.metric === 'nac' ? 'nac.'
               : (S.metric === 'tfr' ? 'TFR' : '‰'),
@@ -103,10 +109,13 @@ export function updateDist() {
   }, true);
 }
 
-// RF-04.2b — dispersión TBN vs población (log)
+// RF-04.2b — dispersión métrica vs población (log), scope activo
 export function updateScatter() {
   const c = mk('ch-scatter');
-  const yr = S.mun[S.year] || {};
+  document.getElementById('scat-h2').textContent =
+    `${{ tbn: 'TBN', tfr: 'TFR', nac: 'Nacimientos' }[S.metric]}` +
+    ' vs. población';
+  const yr = dataset()[S.year] || {};
   const pts = Object.entries(yr).map(([cg, r]) => ({
     v: [r.v[1], valueOf(r)],
     name: `${nombreOf(r, cg)} (${cg})`,
@@ -134,10 +143,14 @@ export function updateScatter() {
   }, true);
 }
 
-// RF-04.3 — ranking top/bottom 10 Jalisco
+// RF-04.3 — ranking top/bottom 10 del scope activo
 export function updateRank() {
   const c = mk('ch-rank');
-  const yr = S.mun[S.year] || {};
+  document.getElementById('rank-h2').textContent =
+    `Ranking ${unitKind() === 'municipios' ? 'municipal' : 'estatal'}`;
+  document.getElementById('rank-tag').textContent =
+    `top / bottom 10 · ${scopeName()}`;
+  const yr = dataset()[S.year] || {};
   const rows = Object.entries(yr)
     .map(([cg, r]) => ({ cg, v: valueOf(r), n: nombreOf(r, cg) }))
     .filter(r => r.v != null)
@@ -180,7 +193,7 @@ export function updateMeta() {
     <div class="mrow"><span>Serie</span><b>${m.anios[0]}–${m.anios[m.anios.length - 1]}</b></div>
     <div class="mrow"><span>Excluidos extranjero</span><b>${fmtNum(m.exclusiones.EXTRANJERO || 0, 0)}</b></div>
     <div class="mrow"><span>No especificado</span><b>${fmtNum(m.exclusiones.NO_ESPECIFICADO || 0, 0)}</b></div>
-    <div style="margin-top:6px">Cobertura SINAC ≈ 86–90% del registro civil (nacimientos en unidades de salud). Las claves de residencia corresponden a la madre. Click en Jalisco para drill-down municipal.<br/>TFR = 5·Σ B<sub>g</sub>/W<sub>g</sub> (grupos quinquenales 15–49, denominadores CONAPO); el municipal aplica la estructura de edad estatal escalada por población femenina — aproximación.</div>`;
+    <div style="margin-top:6px">Cobertura SINAC ≈ 86–90% del registro civil (nacimientos en unidades de salud). Las claves de residencia corresponden a la madre. Click en un estado para drill-down municipal.<br/>TFR = 5·Σ B<sub>g</sub>/W<sub>g</sub> (grupos quinquenales 15–49, denominadores CONAPO); el municipal aplica la estructura de edad estatal escalada por población femenina — aproximación.</div>`;
 }
 
 export function updateAll() {
