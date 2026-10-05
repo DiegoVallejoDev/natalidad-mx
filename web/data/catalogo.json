@@ -56,7 +56,7 @@
   "geometrias": "INEGI Marco Geoestadístico (TopoJSON)"
  },
  "exclusiones": {
-  "NO_ESPECIFICADO": 38335,
-  "EXTRANJERO": 5699
+  "EXTRANJERO": 5699,
+  "NO_ESPECIFICADO": 38335
  }
 }
