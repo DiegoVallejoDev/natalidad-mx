@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Natalidad MX · Tasa Bruta de Natalidad territorial</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<link rel="stylesheet" href="css/app.css">
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/simple-statistics@7.8.8/dist/simple-statistics.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">◆</span>
+    <div>
+      <h1>Natalidad MX</h1>
+      <p class="sub">Tasa Bruta de Natalidad por residencia habitual · ocurrencia</p>
+    </div>
+  </div>
+  <div class="controls">
+    <label class="ctl">
+      <span>Año <em>t</em></span>
+      <select id="ctl-year"></select>
+    </label>
+    <label class="ctl">
+      <span>Cohorte</span>
+      <select id="ctl-cohort"></select>
+    </label>
+    <label class="ctl">
+      <span>Métrica</span>
+      <select id="ctl-metric">
+        <option value="tbn">TBN (por 1,000 hab.)</option>
+        <option value="nac">Volumen de nacimientos</option>
+      </select>
+    </label>
+    <label class="ctl">
+      <span>Clasificación</span>
+      <select id="ctl-class">
+        <option value="jenks">Jenks (Natural Breaks)</option>
+        <option value="quantile">Cuantiles</option>
+        <option value="equal">Intervalos iguales</option>
+        <option value="stddev">Desviación estándar</option>
+      </select>
+    </label>
+    <label class="ctl ctl-check">
+      <input type="checkbox" id="ctl-smooth">
+      <span>Tasa suavizada trienal</span>
+    </label>
+    <div class="ctl ctl-exports">
+      <button id="exp-csv"   title="Exportar tabla filtrada (.csv)">CSV</button>
+      <button id="exp-pq"   title="Descargar dataset consolidado (.parquet)">Parquet</button>
+      <button id="exp-geo"  title="Capa espacial enriquecida (.geojson)">GeoJSON</button>
+      <button id="exp-png"  title="Captura de mapa 300 DPI (.png)">PNG</button>
+      <button id="exp-svg"  title="Gráficos vectoriales (.svg)">SVG</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="map-pane">
+    <div id="map"></div>
+    <div class="map-hud">
+      <button id="btn-back" class="back hidden">← Vista nacional</button>
+      <div id="breadcrumb">México · 32 entidades federativas</div>
+    </div>
+    <div id="legend" class="legend"></div>
+    <div id="tip" class="tip hidden"></div>
+    <div class="variance-note hidden" id="varnote">
+      ⚠ Alta varianza: unidades con población &lt; 10,000
+      <span>(contorno punteado)</span>
+    </div>
+  </section>
+
+  <aside class="charts-pane">
+    <div class="panel">
+      <div class="panel-title">
+        <h2>Evolución temporal</h2>
+        <span class="panel-tag" id="ts-tag">selección vs. referencia</span>
+      </div>
+      <div id="ch-series" class="chart"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">
+        <h2>Distribución municipal</h2>
+        <span class="panel-tag">histograma + KDE · Jalisco</span>
+      </div>
+      <div id="ch-dist" class="chart"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">
+        <h2>TBN vs. población</h2>
+        <span class="panel-tag">dispersión · escala log</span>
+      </div>
+      <div id="ch-scatter" class="chart"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">
+        <h2>Ranking municipal</h2>
+        <span class="panel-tag">top / bottom 10 · Jalisco</span>
+      </div>
+      <div id="ch-rank" class="chart tall"></div>
+    </div>
+    <div class="panel meta">
+      <div id="meta-info"></div>
+    </div>
+  </aside>
+</main>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

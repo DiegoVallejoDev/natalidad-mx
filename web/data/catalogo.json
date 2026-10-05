@@ -1,0 +1,62 @@
+{
+ "anios": [
+  2010,
+  2011,
+  2012,
+  2013,
+  2014,
+  2015,
+  2016,
+  2017,
+  2018,
+  2019,
+  2020,
+  2021,
+  2022,
+  2023,
+  2024
+ ],
+ "cohortes": [
+  {
+   "id": "todas",
+   "label": "Todas las edades"
+  },
+  {
+   "id": "adol",
+   "label": "Adolescentes (<20)"
+  },
+  {
+   "id": "e20_24",
+   "label": "20–24"
+  },
+  {
+   "id": "e25_29",
+   "label": "25–29"
+  },
+  {
+   "id": "e30_34",
+   "label": "30–34"
+  },
+  {
+   "id": "e35_39",
+   "label": "35–39"
+  },
+  {
+   "id": "e40mas",
+   "label": "40+"
+  },
+  {
+   "id": "ne",
+   "label": "No especificada"
+  }
+ ],
+ "fuentes": {
+  "nacimientos": "SINAC/SSa datos abiertos (ocurrencia)",
+  "poblacion": "CONAPO proyecciones 2010–2030 (mitad de año)",
+  "geometrias": "INEGI Marco Geoestadístico (TopoJSON)"
+ },
+ "exclusiones": {
+  "NO_ESPECIFICADO": 38335,
+  "EXTRANJERO": 5699
+ }
+}
