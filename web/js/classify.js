@@ -58,5 +58,7 @@ export function fmtNum(v, dec = 1) {
     { maximumFractionDigits: dec, minimumFractionDigits: 0 });
 }
 export function fmtBreak(b, metric) {
-  return metric === 'nac' ? fmtNum(b, 0) : fmtNum(b, 1);
+  if (metric === 'nac') return fmtNum(b, 0);
+  if (metric === 'tfr') return fmtNum(b, 2);
+  return fmtNum(b, 1);
 }

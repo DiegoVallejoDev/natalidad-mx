@@ -39,6 +39,7 @@ export function valueOf(rec) {
   if (!rec) return null;
   const c = rec.c[S.cohort] || rec.c.todas;
   if (S.metric === 'nac') return c[0];
+  if (S.metric === 'tfr') return rec.tf ?? null;
   return S.smooth ? c[2] : c[1];   // tbn | tbs
 }
 export function nacOf(rec) { return rec?.c[S.cohort]?.[0] ?? rec?.v[0] ?? null; }
@@ -52,6 +53,7 @@ export function seriesOf(cvegeo, scope = S.scope) {
   return S.meta.anios.map(y => {
     const r = ds[y]?.[cvegeo];
     if (!r) return null;
+    if (S.metric === 'tfr') return r.tf ?? null;
     const c = r.c[S.cohort] || r.c.todas;
     return S.metric === 'nac' ? c[0] : (S.smooth ? c[2] : c[1]);
   });

@@ -26,9 +26,29 @@ CATALOGOS = ROOT / "data/catalogos/catalogos.json"
 COHORTE_IDS = ["adol", "e20_24", "e25_29", "e30_34", "e35_39", "e40mas", "ne"]
 UMBRAL = 10_000
 
+# cohorte de nacimientos → grupo quinquenal de mujeres CONAPO
+TFR_MAP = {"adol": "15_19", "e20_24": "20_24", "e25_29": "25_29",
+           "e30_34": "30_34", "e35_39": "35_39", "e40mas": "40_49"}
+
 
 def tbn(b: pl.Expr, p: pl.Expr) -> pl.Expr:
     return pl.when(p > 0).then(b * 1000.0 / p).otherwise(None)
+
+
+def add_tfr(df: pl.DataFrame, wf: pl.DataFrame, key: str) -> pl.DataFrame:
+    """TFR = 5 × Σ_g B_g/W_g (hijos por mujer; reemplazo = 2.1).
+
+    wf trae denominadores wf_{15_19..45_49} ya alineados a `key` —
+    reales a nivel estatal/nacional, estimados a nivel municipal."""
+    df = df.join(wf, on=[key, "anio"], how="left")
+    suma = sum(pl.when(pl.col(f"wf_{g}") > 0)
+                 .then(pl.col(f"nac_{c}") / pl.col(f"wf_{g}"))
+                 .otherwise(0.0)
+               for c, g in TFR_MAP.items())
+    df = df.with_columns(
+        pl.when(pl.col("wf_15_49") > 0)
+          .then(5.0 * suma).otherwise(None).alias("tf"))
+    return df.drop([c for c in df.columns if c.startswith("wf_")])
 
 
 def build_frame(nac: pl.DataFrame, pob: pl.DataFrame,
@@ -84,6 +104,7 @@ def to_records(df: pl.DataFrame, key: str) -> dict:
             "n": row["nombre_geografico"] or row[key],
             "v": [coh["todas"][0], row["pob"], coh["todas"][1],
                   coh["todas"][2]],
+            "tf": round(row["tf"], 3) if row["tf"] is not None else None,
             "f": int(row["flag_baja_escala"]), "c": coh,
         }
     return years
@@ -99,12 +120,32 @@ def main() -> None:
     pob_m = pl.read_parquet(INTERIM / "poblacion_mun.parquet")
     pob_e = pl.read_parquet(INTERIM / "poblacion_ent.parquet")
 
+    # denominadores TFR: mujeres 15-49 por grupo quinquenal
+    wf_e = pl.read_parquet(INTERIM / "mujeres_fert_ent.parquet")
+    pob_fm = pl.read_parquet(INTERIM / "pob_fem_mun.parquet")
+    pob_fe = pl.read_parquet(INTERIM / "pob_fem_ent.parquet")
+
     anios = sorted(nac["anio"].unique().to_list())
     print("años nacimientos:", anios)
+
+    # denominador municipal estimado: estructura estatal × razón femenina
+    wf_m = (pob_fm.with_columns(pl.col("cvegeo").str.slice(0, 2).alias("cve_ent"))
+                  .join(pob_fe, on=["cve_ent", "anio"])
+                  .join(wf_e, on=["cve_ent", "anio"])
+                  .with_columns(
+                      (pl.col("pob_fem") / pl.col("pob_fem_right"))
+                      .alias("esc"))
+                  .select(["cvegeo", "anio"] +
+                          [(pl.col(f"wf_{g}") * pl.col("esc"))
+                           .alias(f"wf_{g}")
+                           for g in TFR_MAP.values()] +
+                          [(pl.col("wf_15_49") * pl.col("esc"))
+                           .alias("wf_15_49")]))
 
     # --- municipios ---
     mun = build_frame(nac, pob_m.filter(pl.col("anio").is_in(anios)),
                       "cvegeo", nom_mun)
+    mun = add_tfr(mun, wf_m, "cvegeo")
 
     # --- entidades: nacimientos agregados por cve_ent ---
     nac_e = (nac.with_columns(pl.col("cvegeo").str.slice(0, 2).alias("cve_ent"))
@@ -113,6 +154,7 @@ def main() -> None:
                       pob_e.rename({"cve_ent": "cvegeo"})
                            .filter(pl.col("anio").is_in(anios)),
                       "cvegeo", nom_ent)
+    ent = add_tfr(ent, wf_e.rename({"cve_ent": "cvegeo"}), "cvegeo")
 
     # --- nacional (cvegeo="00") ---
     nac_n = nac.with_columns(pl.lit("00").alias("cvegeo"))
@@ -121,6 +163,11 @@ def main() -> None:
              .filter(pl.col("anio").is_in(anios)))
     nac_m = build_frame(nac_n, pob_n, "cvegeo",
                         {"00": "México (total)"})
+    wf_n = (wf_e.group_by("anio")
+                .agg([pl.col(c).sum() for c in wf_e.columns
+                      if c.startswith("wf_")])
+                .with_columns(pl.lit("00").alias("cvegeo")))
+    nac_m = add_tfr(nac_m, wf_n, "cvegeo")
     ent = pl.concat([ent, nac_m])
 
     # --- parquet consolidado (esquema del spec) ---
@@ -136,6 +183,7 @@ def main() -> None:
         pl.col("pob").alias("poblacion_mitad_anio"),
         pl.col("tbn_todas").round(2).alias("tasa_bruta_natalidad"),
         pl.col("tbs_todas").round(2).alias("tasa_suavizada_trienal"),
+        pl.col("tf").round(3).alias("tasa_fecundidad"),
         "flag_baja_escala",
     ])
     mun_spec = mun.select([
@@ -148,6 +196,7 @@ def main() -> None:
         pl.col("pob").alias("poblacion_mitad_anio"),
         pl.col("tbn_todas").round(2).alias("tasa_bruta_natalidad"),
         pl.col("tbs_todas").round(2).alias("tasa_suavizada_trienal"),
+        pl.col("tf").round(3).alias("tasa_fecundidad"),
         "flag_baja_escala",
     ])
     tabla = pl.concat([mun_spec, spec])
